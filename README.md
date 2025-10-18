@@ -106,7 +106,7 @@ Even without the actual images, the notebook’s visualisations convey several b
 * Feature Importance / SHAP – Square footage, bathrooms, lot size and age are the most influential predictors. Location variables have little variance because nearly all observations are from the same town, so they contribute less to model differentiation.
 
 # Conclusion and Recommendations
-The Harvard house market analysis demonstrates that machine‑learning and time‑series models can meaningfully predict sale prices and uncover market dynamics even with limited data. Key findings include:
+The house market analysis demonstrates that machine‑learning and time‑series models can meaningfully predict sale prices and uncover market dynamics even with limited data. Key findings include:
 * Drivers of value – Larger homes, more bathrooms and favourable land‑to‑house ratios significantly increase sale prices, while very old houses or those with unfavourable bed‑to‑bath ratios sell for less.
 * Market concentration – Almost all transactions occur in Harvard (zip 01451), meaning the model reflects this specific town’s characteristics and may not generalise to neighbouring markets.
 * Seasonality and growth – Prices exhibit clear seasonal peaks in spring; the short time series hints at a gentle upward trend but with considerable uncertainty beyond one year.
