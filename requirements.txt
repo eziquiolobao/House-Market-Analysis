@@ -6,7 +6,7 @@ shap
 matplotlib
 seaborn
 statsmodels
-streamlit
+streamlit>=1.45.0
 requests
 joblib
 scipy
