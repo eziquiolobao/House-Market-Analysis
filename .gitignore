@@ -11,8 +11,8 @@ env/
 # Jupyter
 .ipynb_checkpoints/
 
-# Data
-*.csv
+# Data (cached)
+data/
 *.parquet
 
 # macOS
