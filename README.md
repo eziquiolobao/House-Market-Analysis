@@ -54,6 +54,8 @@ df = load_data()  # fetches from Redfin or loads cache/fallback
 
 An interactive web app where users input house features and get a predicted sale price.
 
+**[Try the live app here](https://mahousepriceprediction.streamlit.app/)**
+
 **Features:**
 - Sidebar with sliders/selectors for square feet, beds, baths, lot size, year built, city, and sale month
 - Large predicted price card with confidence interval (model MAE)
@@ -65,10 +67,6 @@ An interactive web app where users input house features and get a predicted sale
 ```bash
 streamlit run app.py
 ```
-
-### Deploy
-
-The app is configured for one-click deployment on [Streamlit Community Cloud](https://streamlit.io/cloud).
 
 ## Setup
 
