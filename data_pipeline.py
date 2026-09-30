@@ -1,9 +1,13 @@
 """
 Data pipeline for Worcester County house price data.
 
-Fetches sold-home data from Redfin's Stingray CSV endpoint (matching the
-approach in Redfin_api.py), cleans it, and caches locally. Falls back to
-static house_data.csv if the network fetch fails.
+Fetches sold-home data from Redfin's Stingray CSV endpoint, cleans it, and
+caches locally. Falls back to a committed snapshot if the network fetch fails.
+The snapshot is also what the analysis notebook trains on, so its results are
+reproducible.
+
+Also defines the model's feature set (FEATURES / add_features) so the notebook
+and the Streamlit app build features the same way.
 """
 
 import os
@@ -13,11 +17,12 @@ import re
 import warnings
 from io import StringIO
 
+import numpy as np
 import pandas as pd
 import requests
 
 # ---------------------------------------------------------------------------
-# Redfin region IDs — discovered from working Redfin_api.py and Redfin URLs
+# Redfin region IDs — taken from Redfin search URLs
 # region_type: 6 = city/town
 # ---------------------------------------------------------------------------
 REGIONS = {
@@ -146,6 +151,10 @@ def clean_and_format(df: pd.DataFrame) -> pd.DataFrame:
                 errors="coerce",
             )
 
+    # --- drop rows without a sale price (e.g. Redfin's trailing disclaimer row) ---
+    if "price" in df.columns:
+        df.dropna(subset=["price"], inplace=True)
+
     # --- deduplication ---
     subset_cols = [c for c in ["address", "city", "sold_date", "price"] if c in df.columns]
     if subset_cols:
@@ -170,11 +179,39 @@ def clean_and_format(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
+# ---- Features ----------------------------------------------------------------
+
+FEATURES = [
+    "square_feet", "baths", "beds", "lot_size",
+    "house_age", "sale_month_sin", "sale_month_cos",
+]
+
+
+def add_features(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Add model features. Expects `year_built`, `sale_year` and `sale_month` (1-12).
+
+    - house_age: age of the house in the year it sold
+    - sale_month_sin/cos: month on a circle, so December and January are neighbours
+    """
+    df = df.copy()
+    df["house_age"] = df["sale_year"] - df["year_built"]
+    df["sale_month_sin"] = np.sin(2 * np.pi * df["sale_month"] / 12)
+    df["sale_month_cos"] = np.cos(2 * np.pi * df["sale_month"] / 12)
+    return df
+
+
 # ---- Main entry point --------------------------------------------------------
 
-_STATIC_FALLBACK = os.path.join(os.path.dirname(__file__), "house_data.csv")
-_DEFAULT_CACHE = os.path.join(os.path.dirname(__file__), "data", "redfin_data.csv")
+_DIR = os.path.dirname(os.path.abspath(__file__))
+SNAPSHOT_PATH = os.path.join(_DIR, "data", "harvard_sales_2026-03.csv")
+_DEFAULT_CACHE = os.path.join(_DIR, "data", "redfin_data.csv")
 _CACHE_MAX_AGE_DAYS = 7
+
+
+def load_snapshot() -> pd.DataFrame:
+    """Load the committed, already-cleaned Redfin snapshot (sales Mar 2025 – Feb 2026)."""
+    return pd.read_csv(SNAPSHOT_PATH, parse_dates=["sold_date"])
 
 
 def load_data(
@@ -188,7 +225,7 @@ def load_data(
     Priority:
     1. Fresh cache (< 7 days old)
     2. Live Redfin fetch → save to cache
-    3. Fallback to static house_data.csv
+    3. Fallback to the committed snapshot
     """
     # --- try cache ---
     if use_cache and os.path.exists(cache_path):
@@ -222,11 +259,9 @@ def load_data(
     except Exception as exc:
         warnings.warn(f"Live fetch failed: {exc}")
 
-    # --- fallback to static CSV ---
-    if os.path.exists(_STATIC_FALLBACK):
-        print(f"Falling back to static file: {_STATIC_FALLBACK}")
-        df = pd.read_csv(_STATIC_FALLBACK)
-        df = clean_and_format(df)
-        return df
+    # --- fallback to committed snapshot ---
+    if os.path.exists(SNAPSHOT_PATH):
+        print(f"Falling back to snapshot: {SNAPSHOT_PATH}")
+        return load_snapshot()
 
     raise FileNotFoundError("No data source available.")

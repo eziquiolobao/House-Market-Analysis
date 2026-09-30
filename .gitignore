@@ -11,8 +11,8 @@ env/
 # Jupyter
 .ipynb_checkpoints/
 
-# Data (cached)
-data/
+# Data (live-fetch cache; the snapshot in data/ is committed)
+data/redfin_data.csv
 *.parquet
 
 # macOS

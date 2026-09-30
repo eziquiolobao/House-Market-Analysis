@@ -2,11 +2,7 @@ pandas
 numpy
 scikit-learn
 xgboost
-shap
 matplotlib
-seaborn
-statsmodels
-streamlit>=1.45.0
+streamlit>=1.49.0
 requests
 joblib
-scipy

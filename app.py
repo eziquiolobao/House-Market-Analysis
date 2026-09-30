@@ -9,6 +9,8 @@ import streamlit as st
 import joblib
 import os
 
+import data_pipeline
+
 st.set_page_config(
     page_title="Worcester County House Price Predictor",
     page_icon="🏠",
@@ -54,20 +56,17 @@ def load_model():
 
 
 def build_feature_vector(sqft, beds, baths, lot_size, year_built, sale_month):
-    """Build feature array matching the notebook's FEATURES list."""
-    house_age = 2025 - year_built
-    sale_month_sin = np.sin(2 * np.pi * sale_month / 12)
-    sale_month_cos = np.cos(2 * np.pi * sale_month / 12)
-
-    return pd.DataFrame([{
+    """Build one input row using the same feature code the notebook trains on."""
+    row = pd.DataFrame([{
         "square_feet": sqft,
         "baths": baths,
         "beds": beds,
         "lot_size": lot_size,
-        "house_age": house_age,
-        "sale_month_sin": sale_month_sin,
-        "sale_month_cos": sale_month_cos,
+        "year_built": year_built,
+        "sale_year": datetime.datetime.now().year,
+        "sale_month": sale_month,
     }])
+    return data_pipeline.add_features(row)
 
 
 def main():
@@ -83,7 +82,7 @@ def main():
     pipeline = artifact["pipeline"]
     features = artifact["features"]
     model_name = artifact["model_name"]
-    train_mae = artifact["train_mae"]
+    cv_mae = artifact["cv_mae"]
     price_stats = artifact["price_stats"]
     n_samples = artifact["n_samples"]
 
@@ -112,13 +111,15 @@ def main():
 
     st.sidebar.markdown("---")
 
-    # Refresh data button
-    if st.sidebar.button("Refresh Data & Retrain"):
+    # Refresh data button (refreshes the local cache only; retraining happens in the notebook)
+    if st.sidebar.button("Refresh Data"):
         with st.spinner("Fetching fresh data from Redfin..."):
             try:
-                import data_pipeline
-                data_pipeline.load_data(use_cache=False)
-                st.sidebar.success("Data refreshed. Re-run the notebook to retrain the model.")
+                fresh = data_pipeline.load_data(use_cache=False)
+                st.sidebar.success(
+                    f"Fetched {len(fresh)} sales into the local cache. "
+                    "The model itself is retrained from the notebook."
+                )
             except Exception as e:
                 st.sidebar.error(f"Refresh failed: {e}")
 
@@ -137,7 +138,7 @@ def main():
     <div class="price-card">
         <p>Predicted Sale Price</p>
         <h1>${predicted_price:,.0f}</h1>
-        <p>&plusmn; ${train_mae:,.0f} based on model accuracy</p>
+        <p>&plusmn; ${cv_mae:,.0f} typical error (cross-validated)</p>
     </div>
     """, unsafe_allow_html=True)
 
@@ -171,7 +172,7 @@ def main():
             "Value": [f"{sqft:,}", beds, baths, f"{lot_size:,}",
                       year_built, city, sale_month_name],
         })
-        st.dataframe(input_summary, hide_index=True, use_container_width=True)
+        st.dataframe(input_summary, hide_index=True, width="stretch")
 
     # ---- Disclaimer ----
     st.markdown("---")
