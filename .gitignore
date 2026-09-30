@@ -23,3 +23,6 @@ data/redfin_data.csv
 
 # VSCode
 .vscode/
+
+# Claude
+claude.md/
